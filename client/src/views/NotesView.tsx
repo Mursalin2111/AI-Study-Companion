@@ -12,11 +12,15 @@ import {
   X,
   Eye,
   Edit3,
+  Download,
+  Printer,
 } from 'lucide-react';
 import { api } from '../services/api.js';
 import { useLanguage } from '../context/LanguageContext.js';
 import { useNotification } from '../context/NotificationContext.js';
 import { Note, Subject } from '../types/index.js';
+import { MarkdownRenderer } from '../components/MarkdownRenderer.js';
+import { exportToMarkdown, printFormattedDocument } from '../utils/exportUtils.js';
 
 export const NotesView: React.FC = () => {
   const navigate = useNavigate();
@@ -239,6 +243,44 @@ export const NotesView: React.FC = () => {
             </button>
 
             <button
+              onClick={() => {
+                if (!contentMarkdown) {
+                  showToast('Note is empty', 'error');
+                  return;
+                }
+                exportToMarkdown(title || 'Study_Note', contentMarkdown);
+                showToast('Downloaded Markdown file!', 'success');
+              }}
+              type="button"
+              title="Download Markdown (.md)"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors"
+            >
+              <Download className="w-3.5 h-3.5 text-blue-500" />
+              <span className="hidden sm:inline">.md</span>
+            </button>
+
+            <button
+              onClick={() => {
+                if (!contentMarkdown) {
+                  showToast('Note is empty', 'error');
+                  return;
+                }
+                const subject = subjects.find((s) => s.id === subjectId);
+                printFormattedDocument({
+                  title: title || 'Study Note',
+                  subtitle: subject?.name,
+                  content: contentMarkdown,
+                });
+              }}
+              type="button"
+              title="Print or Save as PDF"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors"
+            >
+              <Printer className="w-3.5 h-3.5 text-emerald-500" />
+              <span className="hidden sm:inline">PDF</span>
+            </button>
+
+            <button
               onClick={handleSaveNote}
               className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-sm"
             >
@@ -301,8 +343,8 @@ export const NotesView: React.FC = () => {
         {/* Editor or Preview Pane */}
         <div className="flex-1 p-6 overflow-y-auto">
           {isPreview ? (
-            <div className="prose dark:prose-invert max-w-none text-slate-800 dark:text-slate-200 text-sm whitespace-pre-line leading-relaxed">
-              {contentMarkdown || '*No content yet.*'}
+            <div className="max-w-none text-slate-800 dark:text-slate-200">
+              <MarkdownRenderer content={contentMarkdown || '*No content yet.*'} />
             </div>
           ) : (
             <textarea

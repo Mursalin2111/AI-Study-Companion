@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import fs from 'node:fs';
+import path from 'node:path';
 import { v4 as uuidv4 } from 'uuid';
 import { query, queryOne, execute, withTransaction } from '../db/connection.js';
 import { authenticateToken } from '../middleware/auth.js';
@@ -36,7 +37,10 @@ router.get('/', (req: Request, res: Response) => {
 
     sql += ' ORDER BY m.created_at DESC';
 
-    const materials = query(sql, params);
+    const materials = query<any>(sql, params).map((m) => ({
+      ...m,
+      file_url: m.file_path ? `/uploads/${path.basename(m.file_path)}` : null,
+    }));
     res.json({ materials });
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Failed to fetch materials.' });
@@ -62,11 +66,16 @@ router.get('/:id', (req: Request, res: Response) => {
       return;
     }
 
+    const materialWithUrl = {
+      ...material,
+      file_url: material.file_path ? `/uploads/${path.basename(material.file_path)}` : null,
+    };
+
     const summaries = query('SELECT * FROM summaries WHERE material_id = ? ORDER BY created_at DESC', [id]);
     const questionsCount = queryOne<any>('SELECT COUNT(*) as cnt FROM questions WHERE material_id = ?', [id])?.cnt || 0;
 
     res.json({
-      material,
+      material: materialWithUrl,
       summaries,
       questionsCount,
     });

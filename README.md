@@ -6,43 +6,26 @@
 
 ## 🌟 Key Highlights
 
-- **Dual-Engine AI Intelligence**:
-  - **Google Gemini Integration**: Built with the official `@google/genai` SDK utilizing `gemini-3.8-flash` and `gemini-embedding-001` for deep reasoning, fast responses, and rich vector embeddings.
-  - **Zero-Config Offline Fallback NLP Engine**: No Gemini API key? No problem! The application includes an offline heuristic NLP engine that generates real RAG answers, multi-level summaries, high-yield questions, MCQs with distractors, and flashcards directly from extracted document text and TF-IDF cosine similarity.
-- **RAG-Grounded "Ask AI" Chat**:
-  - Semantic vector search with cosine similarity and sliding window chunking (500 tokens, 100-token overlap).
-  - Real-time Server-Sent Events (**SSE**) streaming with low-latency token delivery.
-  - Precise source citations with clickable document badges, page numbers, and similarity confidence scores.
-  - Quick action prompts (*"Summarize key formulas"*, *"Predict 5 exam questions"*, *"Explain for Viva"*).
-- **Multi-Level Summaries & High-Yield Questions**:
-  - Multi-tier summaries: **Short (Executive)**, **Medium (Core Concepts)**, **Detailed (Comprehensive)**, and **Exam-Focused (Revision Bullet Points)**.
-  - Exam question prediction categorized by priority (**⭐⭐⭐ Very Important**, **⭐⭐ Important**, **⭐ Practice**) and format (**Short**, **Conceptual**, **Descriptive**, **Definitions**, **Problem-Solving**, **Viva Voce**).
-- **Interactive Quizzes & Timed Mock Exam Simulator**:
-  - Instant Practice mode with immediate feedback, explanations, and distractor breakdowns.
-  - Timed Mock Exam mode with real-time countdown timer, question palette navigation grid, flag-for-review markers, unanswered warnings, and auto-submit.
-  - Score reports with accuracy percentages, XP awards, confetti celebrations, and question-by-question review.
-- **Spaced Repetition Flashcards (SuperMemo SM-2)**:
-  - Scientific SM-2 algorithm calculating repetition intervals, ease factors, and due dates based on 4 response grades (**Again**, **Hard**, **Good**, **Easy**).
-  - 3D perspective flip card animations with complete keyboard shortcuts (`[Space]` to flip, `[1-4]` to grade, arrow keys to navigate).
-- **Smart AI Study Planner**:
-  - Calculates daily study targets based on exam date countdowns and available daily study hours.
-  - Generates structured day-by-day study tasks with completion checkboxes that reward students with gamification XP.
-- **Personal Notes with Live Markdown Editor**:
-  - Clean split-screen/toggle Markdown editor with live preview, syntax highlighting, and formatting toolbar.
-  - One-click AI conversion: Convert personal lecture notes directly into a Flashcard Deck or Practice Quiz.
-- **Progress Tracking & Gamification**:
-  - 7-day study time activity chart, quiz accuracy trends, and weak vs. strong subject breakdown.
-  - Level progression system (XP-based), daily study streak flame counter, and unlockable achievement badges.
-- **Admin & Telemetry Dashboard**:
-  - Real-time AI token usage and estimated cost telemetry.
-  - Storage consumption breakdown (PDFs, DOCX, PPTX).
-  - User management table with role management and system status indicators.
-- **Bilingual English & Bangla Support (দ্বিভাষিক সমর্থন)**:
-  - Complete UI translation with instant 1-click toggle between English and বাংলা (`Hind Siliguri` typography).
-  - Bilingual AI output generation: Students can request explanations in English, Bangla, or a bilingual mix.
-- **Dark Mode & Responsive Design**:
-  - Light, Dark, and System-preference themes.
-  - Fully responsive layout for mobile, tablet, and desktop with a dedicated mobile bottom navigation bar.
+- **Mathematical & Scientific LaTeX Engine (KaTeX)**:
+  - Full mathematical typesetting for inline equations (e.g. `$E=mc^2$`) and block equations (e.g. `$$\int_{0}^{\infty} e^{-x^2} dx = \frac{\sqrt{\pi}}{2}$$`).
+  - Dark-mode code blocks with syntax highlighting, language badges, and 1-click copy to clipboard.
+  - Enhanced markdown tables, academic blockquotes, and definition callouts across Notes, Ask AI, and Summaries.
+- **Academic Export Suite (Anki, PDF, Markdown, Mock Exam Paper)**:
+  - **Anki Flashcard Export**: Tab-separated `.txt` export with `#separator:tab` headers ready for 1-click import into Anki decks.
+  - **Printable A4 PDF Documents**: Custom-styled printable view (`@page { size: A4; margin: 18mm }`) for lecture notes, summaries, and revision guides.
+  - **University-Style Mock Exam Sheets**: 1-click printable exam sheets complete with student header, ID/Roll boxes, bubble answer sheets `(A) [ ] (B) [ ]`, and a separate page-break answer key with conceptual explanations.
+  - **Markdown Export**: Direct `.md` file downloads for personal obsidian or note-taking vaults.
+- **Multimodal Note & Blackboard Ingestion (OCR)**:
+  - Upload photos of whiteboards, handwritten class notes, diagram sketches, and slide captures (`.png, .jpg, .jpeg, .webp`).
+  - Multimodal OCR powered by Gemini 3.8 Flash converts handwriting and math diagrams into clean, structured Markdown and LaTeX formulas.
+  - Visual image preview cards with zoom controls in study materials.
+- **Voice Assistant & Audio Study Mode (STT & TTS)**:
+  - **Speech-to-Text (STT) Voice Dictation**: Hands-free voice questioning in Ask AI using the Web Speech Recognition API with real-time audio waveform indicators.
+  - **Text-to-Speech (TTS) Read-Aloud**: Auditory study mode on Flashcards (Front/Back), AI chat answers, and Course Material Summaries with bilingual voice selection (English and Bangla) and intelligent sanitization of markdown/LaTeX tokens.
+- **Containerization & CI/CD Pipeline**:
+  - Production multi-stage `Dockerfile` (Node 22 Alpine) serving API endpoints, uploads, and static React SPA bundle in a single container.
+  - `docker-compose.yml` with volume persistence for SQLite database (`study_companion_data`) and student files (`study_companion_uploads`).
+  - Automated GitHub Actions CI workflow (`.github/workflows/ci.yml`) validating TypeScript compilation and executing the test suite on push/pull request.
 
 ---
 
@@ -102,6 +85,26 @@ npm run dev
 ```
 
 Open your browser at **`http://localhost:5173`**.
+
+### 5. Run with Docker & Docker Compose (Production Setup)
+
+Spin up the containerized full-stack service with SQLite volume persistence:
+
+```bash
+# 1. Build and launch container in background
+docker compose up -d --build
+
+# 2. Check health and running status
+docker compose ps
+
+# 3. View live server logs
+docker compose logs -f
+
+# 4. Stop containers
+docker compose down
+```
+
+The production container will be live at **`http://localhost:5000`**.
 
 ---
 

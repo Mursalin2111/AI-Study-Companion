@@ -72,11 +72,11 @@ export const MaterialsView: React.FC = () => {
       return;
     }
 
-    const validExtensions = ['.pdf', '.docx', '.doc', '.pptx', '.ppt', '.txt', '.md'];
+    const validExtensions = ['.pdf', '.docx', '.doc', '.pptx', '.ppt', '.txt', '.md', '.png', '.jpg', '.jpeg', '.webp'];
     const hasValidExt = validExtensions.some((ext) => file.name.toLowerCase().endsWith(ext));
 
     if (!hasValidExt) {
-      showToast('Invalid file format. Please upload PDF, DOCX, PPTX, TXT, or MD.', 'error');
+      showToast('Invalid format. Please upload PDF, DOCX, PPTX, TXT, MD, or Note Photos (PNG, JPG, WEBP).', 'error');
       return;
     }
 
@@ -197,7 +197,7 @@ export const MaterialsView: React.FC = () => {
         <input
           ref={fileInputRef}
           type="file"
-          accept=".pdf,.docx,.doc,.pptx,.ppt,.txt,.md"
+          accept=".pdf,.docx,.doc,.pptx,.ppt,.txt,.md,.png,.jpg,.jpeg,.webp"
           className="hidden"
           onChange={(e) => {
             if (e.target.files && e.target.files.length > 0) {

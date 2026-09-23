@@ -11,11 +11,13 @@ import {
   Sparkles,
   RotateCcw,
   Award,
+  Printer,
 } from 'lucide-react';
 import { api } from '../services/api.js';
 import { useLanguage } from '../context/LanguageContext.js';
 import { useNotification } from '../context/NotificationContext.js';
 import { Quiz, QuizQuestion } from '../types/index.js';
+import { printMockExamPaper } from '../utils/exportUtils.js';
 
 export const QuizActiveView: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -224,7 +226,27 @@ export const QuizActiveView: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex justify-center gap-3 pt-4">
+          <div className="flex flex-wrap justify-center gap-3 pt-4">
+            <button
+              onClick={() => {
+                const examQuestions = questions.map((q) => ({
+                  question: q.question_text,
+                  options: q.options || [],
+                  correct_answer: q.correct_answer,
+                  explanation: q.explanation || '',
+                }));
+                printMockExamPaper(
+                  quiz?.title || 'Mock Examination',
+                  quiz?.subject_name || 'Academic Course',
+                  examQuestions
+                );
+              }}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold text-xs hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors shadow-xs"
+            >
+              <Printer className="w-4 h-4 text-emerald-500" />
+              <span>Print Exam Sheet & Solutions (PDF)</span>
+            </button>
+
             <button
               onClick={() => navigate('/quizzes')}
               className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-md transition-colors"

@@ -11,11 +11,22 @@ import {
   BookOpen,
   MessageSquare,
   Plus,
+  Mic,
+  MicOff,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 import { api } from '../services/api.js';
 import { useLanguage } from '../context/LanguageContext.js';
 import { useNotification } from '../context/NotificationContext.js';
 import { Subject, Material } from '../types/index.js';
+import { MarkdownRenderer } from '../components/MarkdownRenderer.js';
+import {
+  speakText,
+  stopSpeaking,
+  startSpeechRecognition,
+  isSpeechRecognitionSupported,
+} from '../utils/speechUtils.js';
 
 export const AskAIView: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -40,6 +51,9 @@ export const AskAIView: React.FC = () => {
   const [isStreaming, setIsStreaming] = useState(false);
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [isListening, setIsListening] = useState(false);
+  const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
+  const recognitionRef = useRef<{ stop: () => void } | null>(null);
 
   const chatBottomRef = useRef<HTMLDivElement>(null);
 
@@ -187,6 +201,53 @@ export const AskAIView: React.FC = () => {
     setCopiedIndex(index);
     showToast(t.askAi.copied, 'success');
     setTimeout(() => setCopiedIndex(null), 2000);
+  };
+
+  const handleToggleVoiceInput = () => {
+    if (isListening) {
+      if (recognitionRef.current) recognitionRef.current.stop();
+      setIsListening(false);
+      return;
+    }
+
+    if (!isSpeechRecognitionSupported()) {
+      showToast('Speech recognition not supported in this browser. Please use Chrome, Edge, or Safari.', 'error');
+      return;
+    }
+
+    setIsListening(true);
+    showToast(language === 'bn' ? 'কথা বলুন...' : 'Listening... Speak now', 'info');
+
+    const recog = startSpeechRecognition({
+      language,
+      onResult: (transcript) => {
+        setInput((prev) => (prev ? `${prev} ${transcript}` : transcript));
+      },
+      onError: (err) => {
+        setIsListening(false);
+        showToast(err, 'error');
+      },
+      onEnd: () => {
+        setIsListening(false);
+      },
+    });
+
+    recognitionRef.current = recog;
+  };
+
+  const handleToggleSpeak = (text: string, index: number) => {
+    if (speakingIndex === index) {
+      stopSpeaking();
+      setSpeakingIndex(null);
+      return;
+    }
+
+    setSpeakingIndex(index);
+    speakText(text, {
+      language,
+      onEnd: () => setSpeakingIndex(null),
+      onError: () => setSpeakingIndex(null),
+    });
   };
 
   return (
@@ -349,7 +410,11 @@ export const AskAIView: React.FC = () => {
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200/60 dark:border-slate-700'
                 }`}
               >
-                <div className="whitespace-pre-line">{m.content}</div>
+                {m.role === 'user' ? (
+                  <div className="whitespace-pre-line">{m.content}</div>
+                ) : (
+                  <MarkdownRenderer content={m.content} />
+                )}
 
                 {/* Grounded Citations */}
                 {m.sources && m.sources.length > 0 && (
@@ -388,6 +453,28 @@ export const AskAIView: React.FC = () => {
                       <>
                         <Copy className="w-3 h-3" />
                         <span>Copy</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => handleToggleSpeak(m.content, idx)}
+                    title={speakingIndex === idx ? 'Stop reading' : 'Listen / Read aloud'}
+                    className={`text-[11px] flex items-center gap-1 transition-colors ${
+                      speakingIndex === idx
+                        ? 'text-rose-600 dark:text-rose-400 font-bold'
+                        : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    {speakingIndex === idx ? (
+                      <>
+                        <VolumeX className="w-3 h-3 text-rose-500 animate-pulse" />
+                        <span>Stop</span>
+                      </>
+                    ) : (
+                      <>
+                        <Volume2 className="w-3 h-3 text-blue-500" />
+                        <span>Listen</span>
                       </>
                     )}
                   </button>
@@ -431,11 +518,30 @@ export const AskAIView: React.FC = () => {
           }}
           className="p-4 border-t border-slate-200 dark:border-slate-800 flex items-center gap-2"
         >
+          <button
+            type="button"
+            onClick={handleToggleVoiceInput}
+            title={isListening ? 'Stop listening' : 'Ask with Voice (Speech-to-Text)'}
+            className={`p-3 rounded-2xl transition-all shrink-0 ${
+              isListening
+                ? 'bg-rose-600 text-white animate-pulse shadow-md scale-105'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+            }`}
+          >
+            {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+          </button>
+
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={t.askAi.placeholder}
+            placeholder={
+              isListening
+                ? language === 'bn'
+                  ? 'কথা বলুন, শোনা হচ্ছে...'
+                  : 'Listening... Speak your question now'
+                : t.askAi.placeholder
+            }
             className="flex-1 px-4 py-3 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
           />
           <button

@@ -13,9 +13,13 @@ const allowedMimeTypes = [
   'text/plain',
   'text/markdown',
   'text/x-markdown',
+  'image/png',
+  'image/jpeg',
+  'image/jpg',
+  'image/webp',
 ];
 
-const allowedExtensions = ['.pdf', '.docx', '.doc', '.pptx', '.ppt', '.txt', '.md'];
+const allowedExtensions = ['.pdf', '.docx', '.doc', '.pptx', '.ppt', '.txt', '.md', '.png', '.jpg', '.jpeg', '.webp'];
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => {
@@ -33,7 +37,7 @@ const fileFilter = (_req: Request, file: Express.Multer.File, cb: multer.FileFil
   if (allowedExtensions.includes(ext) || allowedMimeTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error('Unsupported file type. Please upload a PDF, DOCX, PPTX, TXT, or MD file.'));
+    cb(new Error('Unsupported file type. Please upload a PDF, DOCX, PPTX, TXT, MD, or Image file (PNG, JPG, WEBP).'));
   }
 };
 

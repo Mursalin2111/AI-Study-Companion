@@ -48,6 +48,7 @@ export interface Material {
   status: 'uploading' | 'processing' | 'ready' | 'failed';
   error_message: string | null;
   chunk_count: number;
+  file_url?: string | null;
   created_at: string;
 }
 

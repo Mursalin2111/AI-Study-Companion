@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import pdfParse from 'pdf-parse';
 import mammoth from 'mammoth';
+import { config } from '../config.js';
 
 export interface ExtractedDocument {
   text: string;
@@ -73,6 +74,54 @@ export async function extractTextFromFile(filePath: string, originalName: string
     return {
       text: finalPpt,
       pages: [{ pageNumber: 1, text: finalPpt }],
+    };
+  }
+
+  // Multimodal image lecture notes (PNG, JPG, JPEG, WEBP)
+  if (['.png', '.jpg', '.jpeg', '.webp'].includes(ext)) {
+    let extractedText = '';
+
+    if (config.geminiApiKey && config.geminiApiKey.trim().length > 10) {
+      try {
+        const { GoogleGenAI } = await import('@google/genai');
+        const ai = new GoogleGenAI({ apiKey: config.geminiApiKey });
+        const imageBuffer = fs.readFileSync(filePath);
+        const mimeType = ext === '.png' ? 'image/png' : ext === '.webp' ? 'image/webp' : 'image/jpeg';
+
+        const imagePart = {
+          inlineData: {
+            data: imageBuffer.toString('base64'),
+            mimeType,
+          },
+        };
+
+        const response: any = await (ai as any).models.generateContent({
+          model: config.geminiModel || 'gemini-3.8-flash',
+          contents: [
+            imagePart,
+            `You are an expert academic lecture notes transcriber and OCR system.
+Transcribe and structure all handwritten notes, blackboard equations, diagrams, and section headings from this image into structured, high-yield academic Markdown.
+- Format all formulas in standard LaTeX notation ($...$ for inline or $$...$$ for block).
+- Preserve table structures, lists, and definitions.
+- If diagrams or graphs are present, describe their components and takeaways clearly.`,
+          ],
+        });
+
+        extractedText = response?.text || (response?.candidates?.[0]?.content?.parts?.[0]?.text) || '';
+      } catch (err) {
+        console.warn('[textExtractor] Gemini Vision OCR failed, using fallback placeholder:', err);
+      }
+    }
+
+    if (!extractedText || extractedText.trim().length === 0) {
+      const baseName = path.basename(originalName);
+      extractedText = `# 📷 Lecture Notes Image: ${baseName}\n\nVisual study notes captured from ${baseName}.\n\n*Note: To enable automatic multimodal handwritten recognition and OCR transcription, configure your GEMINI_API_KEY in server/.env.*`;
+    }
+
+    const text = cleanText(extractedText);
+    return {
+      text,
+      pages: [{ pageNumber: 1, text }],
     };
   }
 

@@ -15,11 +15,19 @@ import {
   ChevronUp,
   AlertCircle,
   RefreshCw,
+  Download,
+  Printer,
+  Image as ImageIcon,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 import { api } from '../services/api.js';
 import { useLanguage } from '../context/LanguageContext.js';
 import { useNotification } from '../context/NotificationContext.js';
 import { Material, Summary, Question } from '../types/index.js';
+import { MarkdownRenderer } from '../components/MarkdownRenderer.js';
+import { exportToMarkdown, printFormattedDocument, printMockExamPaper } from '../utils/exportUtils.js';
+import { speakText, stopSpeaking } from '../utils/speechUtils.js';
 
 export const MaterialDetailView: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -43,6 +51,7 @@ export const MaterialDetailView: React.FC = () => {
   const [summaryType, setSummaryType] = useState<'short' | 'medium' | 'detailed' | 'exam'>('exam');
   const [summaryLang, setSummaryLang] = useState<'en' | 'bn'>(appLang);
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+  const [isSpeakingSummary, setIsSpeakingSummary] = useState(false);
 
   // Important Questions tab state
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
@@ -56,6 +65,17 @@ export const MaterialDetailView: React.FC = () => {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const chatBottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    return () => {
+      stopSpeaking();
+    };
+  }, []);
+
+  useEffect(() => {
+    stopSpeaking();
+    setIsSpeakingSummary(false);
+  }, [summaryType, summaryLang, activeTab]);
 
   useEffect(() => {
     if (!id) return;
@@ -98,8 +118,25 @@ export const MaterialDetailView: React.FC = () => {
     (s) => s.type === summaryType && s.language === summaryLang
   );
 
+  const handleToggleSummarySpeech = (content: string) => {
+    if (isSpeakingSummary) {
+      stopSpeaking();
+      setIsSpeakingSummary(false);
+    } else {
+      setIsSpeakingSummary(true);
+      speakText(content, {
+        language: summaryLang,
+        onStart: () => setIsSpeakingSummary(true),
+        onEnd: () => setIsSpeakingSummary(false),
+        onError: () => setIsSpeakingSummary(false),
+      });
+    }
+  };
+
   const handleGenerateSummary = async () => {
     if (!id) return;
+    stopSpeaking();
+    setIsSpeakingSummary(false);
     setIsGeneratingSummary(true);
     try {
       const res = await api.summarizeMaterial({
@@ -263,6 +300,37 @@ export const MaterialDetailView: React.FC = () => {
         </div>
       </div>
 
+      {/* Multimodal Image Preview */}
+      {['PNG', 'JPG', 'JPEG', 'WEBP'].includes(material.file_type?.toUpperCase() || '') && (
+        <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-slate-200">
+              <ImageIcon className="w-4 h-4 text-blue-500" />
+              <span>Captured Note Photo / Blackboard Image</span>
+            </div>
+            {material.file_url && (
+              <a
+                href={material.file_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-blue-600 dark:text-blue-400 font-semibold hover:underline"
+              >
+                View Full Resolution ↗
+              </a>
+            )}
+          </div>
+          {material.file_url && (
+            <div className="max-h-96 overflow-hidden rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-2">
+              <img
+                src={material.file_url}
+                alt={material.title}
+                className="max-h-80 w-auto object-contain rounded-xl shadow-xs"
+              />
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Feature Tabs Bar */}
       <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2 overflow-x-auto">
         <button
@@ -382,6 +450,67 @@ export const MaterialDetailView: React.FC = () => {
           {/* Summary Display Box */}
           {currentSummary ? (
             <div className="p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-6">
+              {/* Summary Action Header */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+                <div className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide">
+                  {summaryType} Summary ({summaryLang === 'bn' ? 'বাংলা' : 'English'})
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleToggleSummarySpeech(currentSummary.content)}
+                    type="button"
+                    title={isSpeakingSummary ? 'Stop Audio' : 'Listen to Summary'}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-colors ${
+                      isSpeakingSummary
+                        ? 'border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 animate-pulse'
+                        : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-750'
+                    }`}
+                  >
+                    {isSpeakingSummary ? (
+                      <>
+                        <VolumeX className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                        <span>Stop</span>
+                      </>
+                    ) : (
+                      <>
+                        <Volume2 className="w-3.5 h-3.5 text-indigo-500" />
+                        <span>Listen</span>
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => {
+                      exportToMarkdown(
+                        `${material?.title || 'Material'}_${summaryType}_summary`,
+                        currentSummary.content
+                      );
+                      showToast('Downloaded Summary as Markdown!', 'success');
+                    }}
+                    type="button"
+                    title="Download Markdown"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-750 transition-colors"
+                  >
+                    <Download className="w-3.5 h-3.5 text-blue-500" />
+                    <span>.md</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      printFormattedDocument({
+                        title: `${material?.title || 'Course Material'} - ${summaryType.toUpperCase()} Summary`,
+                        subtitle: `Language: ${summaryLang === 'bn' ? 'Bangla (বাংলা)' : 'English'}`,
+                        content: currentSummary.content,
+                      });
+                    }}
+                    type="button"
+                    title="Print or Save as PDF"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-750 transition-colors"
+                  >
+                    <Printer className="w-3.5 h-3.5 text-emerald-500" />
+                    <span>PDF</span>
+                  </button>
+                </div>
+              </div>
+
               {/* Core Concepts Badges */}
               {currentSummary.key_concepts_json && (
                 <div>
@@ -402,8 +531,8 @@ export const MaterialDetailView: React.FC = () => {
               )}
 
               {/* Summary Markdown Content */}
-              <div className="prose dark:prose-invert max-w-none text-slate-800 dark:text-slate-200 leading-relaxed text-sm whitespace-pre-line">
-                {currentSummary.content}
+              <div className="max-w-none text-slate-800 dark:text-slate-200">
+                <MarkdownRenderer content={currentSummary.content} />
               </div>
             </div>
           ) : (
@@ -484,7 +613,11 @@ export const MaterialDetailView: React.FC = () => {
                       : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200/60 dark:border-slate-700'
                   }`}
                 >
-                  <div className="whitespace-pre-line">{msg.content}</div>
+                  {msg.role === 'user' ? (
+                    <div className="whitespace-pre-line">{msg.content}</div>
+                  ) : (
+                    <MarkdownRenderer content={msg.content} />
+                  )}
 
                   {/* Grounded Source Citations */}
                   {msg.sources && msg.sources.length > 0 && (

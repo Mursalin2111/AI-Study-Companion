@@ -13,18 +13,23 @@ import {
   Trash2,
   X,
   Keyboard,
+  Download,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 import { api } from '../services/api.js';
 import { useLanguage } from '../context/LanguageContext.js';
 import { useNotification } from '../context/NotificationContext.js';
 import { FlashcardDeck, Flashcard, Material } from '../types/index.js';
+import { exportFlashcardsToAnki } from '../utils/exportUtils.js';
+import { speakText, stopSpeaking } from '../utils/speechUtils.js';
 
 export const FlashcardsView: React.FC = () => {
   const [searchParams] = useSearchParams();
   const deckIdParam = searchParams.get('deckId');
   const materialIdParam = searchParams.get('materialId');
 
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { showToast } = useNotification();
   const navigate = useNavigate();
 
@@ -46,6 +51,29 @@ export const FlashcardsView: React.FC = () => {
 
   // Custom card form
   const [customCard, setCustomCard] = useState({ front: '', back: '', topic: '', hint: '' });
+  const [isSpeakingCard, setIsSpeakingCard] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      stopSpeaking();
+    };
+  }, []);
+
+  const handleToggleCardSpeech = (text?: string) => {
+    if (!text) return;
+    if (isSpeakingCard) {
+      stopSpeaking();
+      setIsSpeakingCard(false);
+      return;
+    }
+
+    setIsSpeakingCard(true);
+    speakText(text, {
+      language: language as any,
+      onEnd: () => setIsSpeakingCard(false),
+      onError: () => setIsSpeakingCard(false),
+    });
+  };
 
   const fetchDecks = async () => {
     try {
@@ -209,10 +237,23 @@ export const FlashcardsView: React.FC = () => {
           {activeDeck && (
             <button
               onClick={() => setIsAddCardModalOpen(true)}
-              className="flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold text-xs hover:bg-slate-50"
+              className="flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold text-xs hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors"
             >
               <Plus className="w-4 h-4" />
               <span>Add Card</span>
+            </button>
+          )}
+          {activeDeck && cards.length > 0 && (
+            <button
+              onClick={() => {
+                exportFlashcardsToAnki(activeDeck.title, cards);
+                showToast(`Exported ${cards.length} cards for Anki!`, 'success');
+              }}
+              title="Export deck to Anki format (.txt)"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold text-xs hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors shadow-2xs"
+            >
+              <Download className="w-4 h-4 text-emerald-500" />
+              <span>Export to Anki</span>
             </button>
           )}
         </div>
@@ -332,7 +373,24 @@ export const FlashcardsView: React.FC = () => {
               {/* Card FRONT */}
               <div className="absolute inset-0 backface-hidden bg-white dark:bg-slate-900 rounded-3xl p-8 flex flex-col justify-between">
                 <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                  <span>Question / Prompt</span>
+                  <div className="flex items-center gap-2">
+                    <span>Question / Prompt</span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleCardSpeech(currentCard?.front);
+                      }}
+                      className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-blue-600 transition-colors"
+                      title={isSpeakingCard ? 'Stop audio' : 'Listen to question'}
+                    >
+                      {isSpeakingCard ? (
+                        <VolumeX className="w-3.5 h-3.5 text-rose-500 animate-pulse" />
+                      ) : (
+                        <Volume2 className="w-3.5 h-3.5 text-blue-500" />
+                      )}
+                    </button>
+                  </div>
                   <span className="text-blue-500 flex items-center gap-1 font-normal">
                     <RotateCw className="w-3.5 h-3.5" />
                     Click to flip
@@ -358,7 +416,24 @@ export const FlashcardsView: React.FC = () => {
               {/* Card BACK */}
               <div className="absolute inset-0 backface-hidden rotate-y-180 bg-gradient-to-br from-blue-50/80 via-white to-indigo-50/60 dark:from-slate-900 dark:via-slate-900 dark:to-blue-950/40 rounded-3xl p-8 flex flex-col justify-between">
                 <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                  <span>Answer / Explanation</span>
+                  <div className="flex items-center gap-2">
+                    <span>Answer / Explanation</span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleCardSpeech(currentCard?.back);
+                      }}
+                      className="p-1 rounded-lg hover:bg-emerald-100 dark:hover:bg-slate-800 text-slate-400 hover:text-emerald-600 transition-colors"
+                      title={isSpeakingCard ? 'Stop audio' : 'Listen to answer'}
+                    >
+                      {isSpeakingCard ? (
+                        <VolumeX className="w-3.5 h-3.5 text-rose-500 animate-pulse" />
+                      ) : (
+                        <Volume2 className="w-3.5 h-3.5 text-emerald-600" />
+                      )}
+                    </button>
+                  </div>
                   <span className="text-slate-400 flex items-center gap-1 font-normal">
                     <RotateCw className="w-3.5 h-3.5" />
                     Flip back
